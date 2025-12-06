@@ -65,7 +65,7 @@ class EchoAIInference:
         try:
             self.sentiment_model = joblib.load(self.sentiment_model_path)
             self.vectorizer = joblib.load(self.vectorizer_path)
-            logger.info("✓ Sentiment model loaded successfully")
+            logger.info(" Sentiment model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load sentiment model: {e}")
             raise
@@ -75,7 +75,7 @@ class EchoAIInference:
             try:
                 self.response_generator = ResponseGenerator(self.llm_model_name)
                 self.response_generator.load_model()
-                logger.info("✓ Response generation model loaded successfully")
+                logger.info(" Response generation model loaded successfully")
             except Exception as e:
                 logger.error(f"Failed to load LLM: {e}")
                 logger.warning("Continuing without response generation")
@@ -100,7 +100,18 @@ class EchoAIInference:
             
             # Get prediction
             prediction = self.sentiment_model.predict(text_tfidf)[0]
-            sentiment_label = self.sentiment_labels[prediction]
+
+            rating_to_sentiment = {
+                1: 'terrible',
+                2: 'negative',
+                3: 'neutral',
+                4: 'positive',
+                5: 'amazing'
+            }
+
+            sentiment_label = rating_to_sentiment.get(int(prediction), 'neutral')
+
+            # sentiment_label = self.sentiment_labels[prediction]
             
             # Get confidence if available
             confidence = None
