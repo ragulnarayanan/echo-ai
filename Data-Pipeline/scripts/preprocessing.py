@@ -3,32 +3,26 @@ import pandas as pd
 import numpy as np
 import re
 import logging
-from typing import Optional
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Define default paths
+RAW_DIR = Path(__file__).resolve().parent.parent.parent / "data/raw"
+PROCESSED_DIR = Path(__file__).resolve().parent.parent.parent / "data/processed"
+DEFAULT_INPUT = RAW_DIR / "dataset_restaurant-review-aggregator_2025-11-22_23-47-46-681.csv"
+DEFAULT_OUTPUT = PROCESSED_DIR / "clean_reviews.csv"  # <- save processed data here
 
 def clean_text(text: str) -> str:
     """Clean and normalize review text"""
     if pd.isna(text):
         return ""
-    
-    # Convert to string and lowercase
     text = str(text).lower()
-    
-    # Remove URLs
     text = re.sub(r'http\S+|www.\S+', '', text)
-    
-    # Remove HTML tags
     text = re.sub(r'<.*?>', '', text)
-    
-    # Remove special characters but keep spaces and basic punctuation
     text = re.sub(r'[^a-zA-Z0-9\s.,!?]', '', text)
-    
-    # Remove extra whitespace
-    text = ' '.join(text.split())
-    
-    return text.strip()
+    return ' '.join(text.split()).strip()
 
 def generate_template_review(rating: int) -> str:
     templates = {
@@ -40,54 +34,44 @@ def generate_template_review(rating: int) -> str:
     }
     return templates.get(rating, "")
 
-
 def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     logger.info(f"Missing values before handling: {df.isnull().sum().sum()}")
-
     if "reviewRating" in df.columns:
         df = df.dropna(subset=["reviewRating"])
-
         df["reviewRating"] = df["reviewRating"].astype(int)
-
         df["reviewText"] = df.apply(
-            lambda row: generate_template_review(row["reviewRating"]) 
-            if pd.isna(row["reviewText"]) or str(row["reviewText"]).strip() == "" 
+            lambda row: generate_template_review(row["reviewRating"])
+            if pd.isna(row["reviewText"]) or str(row["reviewText"]).strip() == ""
             else row["reviewText"],
             axis=1
         )
-    
     logger.info(f"Missing values after handling: {df.isnull().sum().sum()}")
     return df
 
-def preprocess_data(input_path: str = 'E:/Masters/MLOps/echo-ai/data/raw/apify_data.csv',
-                   output_path: str = 'E:/Masters/MLOps/echo-ai/data/processed/clean_reviews_apify.csv') -> pd.DataFrame:
+def preprocess_data(input_path: Path = DEFAULT_INPUT, output_path: Path = DEFAULT_OUTPUT) -> pd.DataFrame:
     """Main preprocessing pipeline"""
     try:
-        # Load data
         logger.info(f"Loading data from {input_path}")
         df = pd.read_csv(input_path)
         logger.info(f"Loaded {len(df)} reviews")
-        
-        expected_cols = {"placeName", "placeAddress", "reviewText","reviewDate", "reviewRating", "authorName"}
+
+        expected_cols = {"placeName", "placeAddress", "reviewText", "reviewDate", "reviewRating", "authorName"}
         if not expected_cols.issubset(df.columns):
             missing = expected_cols - set(df.columns)
             raise ValueError(f"Missing required columns: {missing}")
 
-        # Handle missing values
         df = handle_missing_values(df)
-        
         df["reviewDate"] = pd.to_datetime(df["reviewDate"], errors="coerce").dt.date
-
-        # Clean text
-        logger.info("Cleaning text...")
         df['reviewText'] = df['reviewText'].apply(clean_text)
-        
-        # Save processed data
+
+        # Ensure processed directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Save to clean_reviews.csv
         df.to_csv(output_path, index=False)
         logger.info(f"Saved {len(df)} processed reviews to {output_path}")
-        
+
         return df
-        
     except Exception as e:
         logger.error(f"Preprocessing failed: {e}")
         raise

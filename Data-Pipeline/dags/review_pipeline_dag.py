@@ -4,11 +4,32 @@ from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 import sys
 import os
+from pathlib import Path
+import logging
 
-# Add scripts path
-sys.path.insert(0, '/opt/airflow/Data-Pipeline/scripts')
+# ------------------------------
+# Paths
+# ------------------------------
+DAGS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = Path(DAGS_DIR).parent  # Data-Pipeline/
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
 
-# Default arguments for the DAG
+LOGS_DIR = PROJECT_ROOT / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+
+DATA_DIR = PROJECT_ROOT.parent / "data"  # echo-ai/data
+RAW_DIR = DATA_DIR / "raw"
+PROCESSED_DIR = DATA_DIR / "processed"
+
+# ------------------------------
+# Logging
+# ------------------------------
+logger = logging.getLogger(__name__)
+
+# ------------------------------
+# Default DAG args
+# ------------------------------
 default_args = {
     'owner': 'echo-ai-team',
     'depends_on_past': False,
@@ -20,7 +41,9 @@ default_args = {
     'retry_delay': timedelta(minutes=5)
 }
 
-# Define the DAG
+# ------------------------------
+# DAG definition
+# ------------------------------
 dag = DAG(
     'review_processing_pipeline',
     default_args=default_args,
@@ -30,49 +53,54 @@ dag = DAG(
     tags=['reviews', 'nlp', 'echo-ai']
 )
 
-# Task 1: Generate or acquire data
+# ------------------------------
+# Tasks
+# ------------------------------
 def acquire_data_task():
     from data_acquisition import acquire_data
     df = acquire_data()
-    print(f"Acquired {len(df)} reviews")
-    return "data/raw/synthetic_reviews.csv"
+    logger.info(f"Acquired {len(df)} reviews")
+    return str(RAW_DIR / "synthetic_reviews.csv")
 
-# Task 2: Preprocess data
+
 def preprocess_data_task():
     from preprocessing import preprocess_data
     df = preprocess_data()
-    print(f"Preprocessed {len(df)} reviews")
-    return "data/processed/clean_reviews.csv"
+    logger.info(f"Preprocessed {len(df)} reviews")
+    return str(PROCESSED_DIR / "clean_reviews.csv")
 
-# Task 3: Feature engineering
+
 def feature_engineering_task():
     from feature_engineering import create_features
     df = create_features()
-    print(f"Created features for {len(df)} reviews")
-    return "data/processed/features.csv"
+    logger.info(f"Created features for {len(df)} reviews")
+    return str(PROCESSED_DIR / "features.csv")
 
-# Task 4: Validate data
+
 def validate_data_task():
     from validation import validate_data
     results = validate_data()
-    print(f"Validation passed: {results.get('validation_passed')}")
+    logger.info(f"Validation passed: {results.get('validation_passed')}")
     return results
 
-# Task 5: Detect bias
+
 def detect_bias_task():
     from bias_detection import detect_and_report_bias
     report = detect_and_report_bias()
-    print("Bias analysis complete")
-    return "docs/bias_report.md"
+    logger.info("Bias analysis complete")
+    return str(PROJECT_ROOT.parent / "docs" / "bias_report.md")
 
-# Task 6: Detect anomalies
+
 def detect_anomalies_task():
     from anomaly_detection import detect_anomalies
     anomalies = detect_anomalies()
-    print(f"Found {len(anomalies)} anomaly types")
+    logger.info(f"Found {len(anomalies)} anomaly types")
     return anomalies
 
-# Define tasks
+
+# ------------------------------
+# PythonOperator definitions
+# ------------------------------
 t1_acquire = PythonOperator(
     task_id='acquire_data',
     python_callable=acquire_data_task,
@@ -109,14 +137,18 @@ t6_anomalies = PythonOperator(
     dag=dag
 )
 
-# Task to generate data quality report
+# ------------------------------
+# BashOperator for pipeline report
+# ------------------------------
 t7_report = BashOperator(
     task_id='generate_report',
-    bash_command='echo "Pipeline completed at $(date)" >> logs/pipeline_report.log',
+    bash_command=f'echo "Pipeline completed at $(date)" >> {LOGS_DIR}/pipeline_report.log',
     dag=dag
 )
 
-# Set task dependencies
+# ------------------------------
+# Task dependencies
+# ------------------------------
 t1_acquire >> t2_preprocess >> t3_features
 t3_features >> [t4_validate, t5_bias, t6_anomalies]
 [t4_validate, t5_bias, t6_anomalies] >> t7_report

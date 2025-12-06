@@ -1,20 +1,6 @@
 {
-  "file_path": "data/processed/features_apify.csv",
-  "total_records": 1045,
-  "total_columns": 10,
-  "column_names": [
-    "placeName",
-    "placeAddress",
-    "provider",
-    "reviewText",
-    "reviewDate",
-    "reviewRating",
-    "authorName",
-    "text_length",
-    "sentiment",
-    "restaurant_avg_rating"
-  ],
-  "data_types": {
+  "validation_passed": false,
+  "type_checks": {
     "reviewRating": {
       "expected": "int64",
       "actual": "int64",
@@ -24,17 +10,37 @@
       "expected": "object",
       "actual": "object",
       "valid": true
-    }
-  },
-  "data_ranges": {
+    },
     "text_length": {
-      "min": "3",
-      "max": "2070",
-      "mean": 134.30717703349282,
-      "empty_count": 0
+      "expected": "int64",
+      "actual": "int64",
+      "valid": true
+    },
+    "restaurant_avg_rating": {
+      "expected": "float64",
+      "actual": "float64",
+      "valid": true
+    },
+    "sentiment": {
+      "expected": "object",
+      "actual": "object",
+      "valid": true
     }
   },
-  "missing_values": {
+  "range_checks": {
+    "reviewRating": {
+      "min": 1,
+      "max": 5,
+      "valid": "True"
+    },
+    "text_length": {
+      "min": 3,
+      "max": 2070,
+      "mean": 134.30717703349282,
+      "valid": "True"
+    }
+  },
+  "missing_checks": {
     "placeName": {
       "missing_count": 0,
       "missing_percentage": 0.0,
@@ -53,7 +59,7 @@
     "reviewText": {
       "missing_count": 1,
       "missing_percentage": 0.1,
-      "is_critical": false
+      "is_critical": true
     },
     "reviewDate": {
       "missing_count": 0,
@@ -63,7 +69,7 @@
     "reviewRating": {
       "missing_count": 0,
       "missing_percentage": 0.0,
-      "is_critical": false
+      "is_critical": true
     },
     "authorName": {
       "missing_count": 0,
@@ -86,14 +92,10 @@
       "is_critical": false
     }
   },
-  "duplicates": {
-    "duplicate_review_ids": 51,
-    "duplicate_texts": 384,
+  "duplicate_checks": {
+    "duplicate_authorName": 51,
+    "duplicate_reviewText": 384,
     "exact_duplicates": 2
   },
-  "validation_timestamp": "2025-12-03T16:27:59.674355",
-  "validation_passed": false,
-  "issues": [
-    "Duplicate review IDs found"
-  ]
+  "validation_timestamp": "2025-12-06T07:50:58.596436"
 }
