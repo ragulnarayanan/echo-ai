@@ -72,8 +72,8 @@ class ResponseGenerator:
             model_name: Name of the Hugging Face model to use
             device: 'cuda', 'cpu', or 'auto'
         """
-        if not TRANSFORMERS_AVAILABLE:
-            raise ImportError("Transformers library not available")
+        # if not TRANSFORMERS_AVAILABLE:
+        #     raise ImportError("Transformers library not available")
         
         self.model_name = model_name
         self.device = self._setup_device(device)
